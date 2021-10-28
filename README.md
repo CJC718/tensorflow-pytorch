@@ -76,6 +76,7 @@ Prediction：输出层的锚框机制和Yolov3相同，主要改进的是训练�
 ## YoloV3 ##
 Yolov3，网络结构主要由三个基本组件构成
 
+![image](https://github.com/CJC718/tensorflow-pytorch/blob/main/githup%E5%9B%BE%E7%89%87/%E5%9B%BE%E7%89%87%203.png) 
 
 Concat：张量拼接，会扩充两个张量的维度，例如26*26*256和26*26*512两个张量拼接，结果是26*26*768。
 整个yolo_v3_body包含252层
@@ -83,6 +84,107 @@ Concat：张量拼接，会扩充两个张量的维度，例如26*26*256和26*26
 yolo v3输出了3个不同尺度的feature map，如上图所示的y1, y2, y3。这也是v3论文中提到的为数不多的改进点：predictions across scales
 这个借鉴了FPN(feature pyramid networks)，采用多尺度来对不同size的目标进行检测，越精细的grid cell就可以检测出越精细的物体。
 
-v3对b-box进行预测的时候，采用了logistic regression。这一波操作sao得就像RPN中的线性回归调整b-box。v3每次对b-box进行predict时，输出和v2一样都是
-## YoloV4 ##
+v3对b-box进行预测的时候，采用了logistic regression。这一波操作sao得就像RPN中的线性回归调整b-box。v3每次对b-box进行predict时，输出和v2一样都是(tx,ty,th,tw,to)
 
+v3的lossfunction由(x,y),(w,h),class,confidence组成。除了(w,h)，其他都采用交叉熵损失函数。
+
+![image](https://github.com/CJC718/tensorflow-pytorch/blob/main/githup%E5%9B%BE%E7%89%87/%E5%9B%BE%E7%89%87%209.png) 
+
+## YoloV2 ##
+
+BatchNormlization:
+
+![image](https://user-images.githubusercontent.com/68943201/139191068-ba4c8d0c-c601-40db-90a9-6dde2c4c7f6c.png)
+
+High Resolution Classifier:
+
+对于YOLOv2，作者一开始在协调分类网络(指DarkNet-19)用的448X448全分辨率在ImageNet上跑了10个epoch。这使得网络有时间去调整自己的filter来使得自己能够在更高分辨率的输入上表现更佳。
+
+Convolutional With Anchor Boxes: 在yolo_v2的优化尝试中加入了anchor机制。YOLO通过全连接层直接预测Bounding Box的坐标值。 yolov2会给出先验框，而每个先验框长短不一。
+
+Direct location prediction:
+
+multi-scale training
+
+Fine-Grained Features：调整后的yolo将在13x13的特征图上做检测任务。虽然这对大物体检测来说用不着这么细粒度的特征图，但这对小物体检测十分有帮助。
+
+![image](https://user-images.githubusercontent.com/68943201/139201402-5fba19a6-5422-478a-ae3a-e2de633d5b9e.png)
+
+
+## YoloV1 ##
+
+![image](https://user-images.githubusercontent.com/68943201/139201726-e14aab14-7055-4a9a-ab0b-4dac4650ca8d.png)
+
+![image](https://user-images.githubusercontent.com/68943201/139201761-65513020-809a-4ce5-836e-c2e4d19f4d74.png)
+
+
+## inceptionV1 ##
+
+![image](https://user-images.githubusercontent.com/68943201/139204205-a1f93355-1e51-411f-ba2c-1365679278a6.png)
+
+提出 Inception 结构，人为构建稀疏连接，引入多尺度感受野和多尺度融合
+使用 [公式] 卷积层进行降维，减少计算量
+使用均值池化取代全连接层，大幅度减少参数数目和计算量，一定程度上引入了正则化，同时使得网络输入的尺寸可变
+
+辅助分类器 auxiliary classifiers
+
+当网络深度相对较大时，可能需要担忧反向传播的能力。但是实验发现，在相对浅层的中间层，生成的特征具有较高的辨识度。
+
+因此我们考虑添加辅助分类器 (auxiliary classifiers)。我们期望用它们来增加辨识度，从而补充梯度，并增加额外的正则化。辅助分类器由小的 CNNs 组成，接在 Icneption 模块之后。
+
+事实上在较低的层级上这样处理基本没作用，作者在后来的 inception v3 论文中做了澄清。
+
+在训练过程中，辅助分类器（Auxiliary classifiers） 的 loss 将会添加到总的 loss 中，但是权重较小 (本文为 0.3)。而在推理阶段，不需要这些 auxiliary classifiers。
+
+其中，auxiliary classifiers 的具体结构如下：
+
+均值池化层，后接 [公式] ，步长为 3 的卷积层，对应输出分别为： [公式] 和 [公式] 。
+输出通道为 128 的 [公式] 的卷积层，用于维度缩减和非线性引入
+全连接层，1024 个神经元，后接一个 ReLU
+一个 dropout 层， [公式]
+全连接层，后接一个 softmax 作为分类器，预测 1000 类输出
+
+
+## inceptionV2 ##
+
+将大卷积核换成堆叠的小卷机核，更少参数量，计算量，更多的非线性变化。空间可分离卷积。label smoothing
+
+在特征（feature）维度上的稀疏连接进行处理，也就是在通道的维度上进行处理。
+
+Batch Normalization
+
+这个算法太牛了，使得训练深度神经网络成为了可能。从一下几个方面来介绍。
+
+为了解决什么问题提出的BN
+
+训练深度神经网络时，作者提出一个问题，叫做“Internal Covariate Shift”。
+
+这个问题是由于在训练过程中，网络参数变化所引起的。具体来说，对于一个神经网络，第n层的输入就是第n-1层的输出，在训练过程中，每训练一轮参数就会发生变化，对于一个网络相同的输入，但n-1层的输出却不一样，这就导致第n层的输入也不一样，这个问题就叫做“Internal Covariate Shift”。
+
+为了解决这个问题，提出了BN。
+
+BN的来源
+
+白化操作--在传统机器学习中，对图像提取特征之前，都会对图像做白化操作，即对输入数据变换成0均值、单位方差的正态分布。
+卷积神经网络的输入就是图像，白化操作可以加快收敛，对于深度网络，每个隐层的输出都是下一个隐层的输入，即每个隐层的输入都可以做白化操作。 
+在训练中的每个mini-batch上做正则化：
+![image](https://user-images.githubusercontent.com/68943201/139216290-3754baf7-491d-49a1-a9aa-4e3536afa2f4.png)
+
+![image](https://user-images.githubusercontent.com/68943201/139216649-d05063d2-8387-44bf-adb0-04c7dfd3c9d3.png)
+
+
+BN的本质
+
+我的理解BN的主要作用就是：
+
+加速网络训练
+防止梯度消失
+如果激活函数是sigmoid，对于每个神经元，可以把逐渐向非线性映射的两端饱和区靠拢的输入分布，强行拉回到0均值单位方差的标准正态分布，即激活函数的兴奋区，在sigmoid兴奋区梯度大，即加速网络训练，还防止了梯度消失。
+
+基于此，BN对于sigmoid函数作用大。
+
+sigmoid函数在区间[-1, 1]中，近似于线性函数。如果没有这个公式：
+
+就会降低了模型的表达能力，使得网络近似于一个线性映射，因此加入了scale 和shift。
+
+它们的主要作用就是找到一个线性和非线性的平衡点，既能享受非线性较强的表达能力，有可以避免非线性饱和导致网络收敛变慢问题。

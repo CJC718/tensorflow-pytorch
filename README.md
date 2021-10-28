@@ -1,4 +1,7 @@
 # tensorflow-pytorch
+
+您好，我叫陈嘉诚，本科毕业太原理工大学通信工程专业，目前研二在读于东南大学苏州校区人工智能应用专业，导师属于信息科学与工程学院。我目前研究方向是计算机视觉。学习过的论文主要是，vgg，resnet，yolo系列和inception系列论文。也做了一些项目实现，比如基于词袋模型的数据集分类，使用yolov5模型实现对到道路区域物体的检测。目前求职意向是计算机视觉实习生岗位，我实习时间可以一年，可随时到岗，这就是我简单自我介绍，谢谢。
+
 ## 第一个项目 ##
 
 提出了基于词袋模型的数据集分类解决方案，该方案是通过建立视觉词典对数据进行分类。
@@ -14,6 +17,19 @@ Bag-of-words模型是信息检索领域常用的文档表示方法。但是这�
  ![image](https://github.com/CJC718/tensorflow-pytorch/blob/main/githup%E5%9B%BE%E7%89%87/%E5%9B%BE%E7%89%87%201.jpg)
  
  ![image](https://github.com/CJC718/tensorflow-pytorch/blob/main/githup%E5%9B%BE%E7%89%87/%E5%9B%BE%E7%89%87%202.jpg)
+ 
+ （1）输入端：Mosaic数据增强、自适应锚框计算、自适应图片缩放
+（2）Backbone：Focus结构，CSP结构
+（3）Neck：FPN+PAN结构
+（4）Prediction：GIOU_Loss
+
+Focus结构，在Yolov3&Yolov4中并没有这个结构，其中比较关键是切片操作。
+
+比如右图的切片示意图，4*4*3的图像切片后变成2*2*12的特征图。
+
+以Yolov5s的结构为例，原始608*608*3的图像输入Focus结构，采用切片操作，先变成304*304*12的特征图，再经过一次32个卷积核的卷积操作，最终变成304*304*32的特征图。
+
+需要注意的是：Yolov5s的Focus结构最后使用了32个卷积核，而其他三种结构，使用的数量有所增加，先注意下，后面会讲解到四种结构的不同点。
 
 ## YoloV4 ##
 ![image](https://github.com/CJC718/tensorflow-pytorch/blob/main/githup%E5%9B%BE%E7%89%87/%E5%9B%BE%E7%89%87%204.png)

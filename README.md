@@ -10,7 +10,7 @@ Bag-of-words模型是信息检索领域常用的文档表示方法。但是这�
 ## 第二个项目 ##
 
 目的就是使用yolov5模型实现对到道路区域的物体的检测。首先，我进行了一些调研，因为yolov系列对设备比较友好，所以我就选取了yolov5来作为网络模型。然后我训练集选用coco数据集的特定数据类别的部分数据，比如car，person，bus等。这些在实际区域中经常出现。然后我使用make sense，手动标记了一些图片添加进数据集。第一次实验，我没有使用已经预训练好的网络，从头开始训练，训练大概四五个小时，训练结果很差，测试很多图片没有检测框。由于设备限制，我就选取一个已经训练好的最轻量化的网络yolo5s来训练，然后调整image-weights，multi-scale，label-smoothing，使得训练的模 型更加准确，泛化性更强。训练结束后，选取合适的目标检测阈值以及 IOU 阈值，得到最终预测结果。
-结果:在经过三个多小时训练，300 次迭代之后，对行人检测置信度达到 85%以上，对广告牌以及标志牌的 置信度达到 60%，对手机等小物体置信度达到 20%。
+结果:在经过三个多小时训练，300 次迭代之后，precision达到0.64，recall达到0.93，mAP@0.5达到0.91，mAP@0.5:0.95达到0.73。
 
 ## YoloV5 ##
 
@@ -222,4 +222,26 @@ Resnet 解决了网络退化现象
 ResNet反向传播传回的梯度相关性好。
 Resnet 相当于几个浅层网络的集成，有很多潜在路径
 Skip connection可以实现不同分辨率特征的组合
+
+## Faster rcnn ##
+
+Conv layers。作为一种CNN网络目标检测方法，Faster RCNN首先使用一组基础的conv+relu+pooling层提取image的feature maps。该feature maps被共享用于后续RPN层和全连接层。
+Region Proposal Networks。RPN网络用于生成region proposals。该层通过softmax判断anchors属于positive或者negative，再利用bounding box regression修正anchors获得精确的proposals。
+Roi Pooling。该层收集输入的feature maps和proposals，综合这些信息后提取proposal feature maps，送入后续全连接层判定目标类别。
+Classification。利用proposal feature maps计算proposal的类别，同时再次bounding box regression获得检测框最终的精确位置。
+
+上图4展示了RPN网络的具体结构。可以看到RPN网络实际分为2条线，上面一条通过softmax分类anchors获得positive和negative分类，下面一条用于计算对于anchors的bounding box regression偏移量，以获得精确的proposal。而最后的Proposal层则负责综合positive anchors和对应bounding box regression偏移量获取proposals，同时剔除太小和超出边界的proposals。其实整个网络到了Proposal Layer这里，就完成了相当于目标定位的功能。
+
+## Fast- rcnn ##
+
+RCCN存在以下几个问题：
+（1） 需要事先提取多个候选区域对应的图像。这一行为会占用大量的磁盘空间；
+（2） 针对传统的CNN来说，输入的map需要时固定尺寸的，而归一化过程中对图片产生的形变会导致图片大小改变，这对CNN的特征提取有致命的坏处；
+（3） 每个region proposal都需要进入CNN网络计算。进而会导致过多次的重复的相同的特征提取，这一举动会导致大大的计算浪费。
+　　针对以上问题，Fast R-CNN采用了几个更新来提高训练和测试速度，同时也提高了检测精度。在本文中，简化了基于最先进的卷积神经网络的对象检测器的训练过程。提出了一种单阶段联合学习的目标建议分类和空间定位的训练算法。
+
+　ROI是指的在SS完成后得到的“候选框”在卷积特征图上的映射；将每个候选区域均匀分成H×W块，对每块进行max pooling。将特征图上大小不一的候选区域转变为大小统一的数据，送入下一层。如下图：
+ 
+  这样虽然输入的图片尺寸不同，得到的feature map（特征图）尺寸也不同，但是可以加入这个神奇的ROI Pooling层，对每个region都提取一个固定维度的特征表示，就可再通过正常的softmax进行类型识别（在论文中使用VGG16，故需提取为7×7）。每个RoI由一个四元组(r, c, h, w)定义，该四元组指定其左上角(r, c)及其高度和宽度(h, w)。
+　　以上操作避免了RCNN存在让图像产生形变，或者图像变得过小的问题，使一些特征产生了损失，继而对之后的特征选择产生巨大影响。
 
